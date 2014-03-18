@@ -83,8 +83,6 @@ namespace Anonymity {
       InitClient();
     }
 
-    _state->slot_open = false;
-
     Hash hashalgo;
     QByteArray hashval = GetRoundId().GetByteArray();
     hashval = hashalgo.ComputeHash(hashval);
@@ -375,10 +373,10 @@ namespace Anonymity {
     QBitArray online;
     stream >> signatures >> cleartext >> online;
 
-    if(cleartext.size() != _state->msg_length) {
+    if(cleartext.size() != _state->scheduler->msg_length) {
       throw QRunTimeError("Cleartext size mismatch: " +
           QString::number(cleartext.size()) + " :: " +
-          QString::number(_state->msg_length));
+          QString::number(_state->scheduler->msg_length));
     }
 
     Hash hash;
@@ -430,10 +428,10 @@ namespace Anonymity {
     QByteArray payload;
     stream >> payload;
 
-    if(payload.size() != _server_state->msg_length) {
+    if(payload.size() != _server_state->scheduler->msg_length) {
       throw QRunTimeError("Incorrect message length, got " +
           QString::number(payload.size()) + " expected " +
-          QString::number(_server_state->msg_length));
+          QString::number(_server_state->scheduler->msg_length));
     }
 
     _server_state->handled_clients[idx] = true;
@@ -552,10 +550,10 @@ namespace Anonymity {
     QByteArray ciphertext;
     stream >> ciphertext;
 
-    if(ciphertext.size() != _server_state->msg_length) {
+    if(ciphertext.size() != _server_state->scheduler->msg_length) {
       throw QRunTimeError("Incorrect message length, got " +
           QString::number(ciphertext.size()) + " expected " +
-          QString::number(_server_state->msg_length));
+          QString::number(_server_state->scheduler->msg_length));
     }
 
     QByteArray commit = Hash().ComputeHash(ciphertext);
@@ -904,11 +902,11 @@ namespace Anonymity {
 
   void CSBulkRound::PrepareForBulk()
   {
-    _state->msg_length = (GetGroup().Count() / 8);
+    _state->scheduler->msg_length = (GetGroup().Count() / 8);
     if(GetGroup().Count() % 8) {
-      ++_state->msg_length;
+      ++_state->scheduler->msg_length;
     }
-    _state->base_msg_length = _state->msg_length;
+    _state->scheduler->SetBaseMessageLength(_state->scheduler->msg_length);
 
     SetupRngSeeds();
     _state_machine.StateComplete();
@@ -1001,8 +999,8 @@ namespace Anonymity {
 
   QByteArray CSBulkRound::GenerateCiphertext()
   {
-    QByteArray xor_msg(_state->msg_length, 0);
-    QByteArray tmsg(_state->msg_length, 0);
+    QByteArray xor_msg(_state->scheduler->msg_length, 0);
+    QByteArray tmsg(_state->scheduler->msg_length, 0);
     
     int idx = 0;
     for(int jdx = 0; jdx < _state->anonymous_rngs.size(); jdx++) {
@@ -1014,13 +1012,13 @@ namespace Anonymity {
       Xor(xor_msg, xor_msg, tmsg);
     }
 
-    if(_state->slot_open) {
-      int offset = _state->base_msg_length;
-      foreach(int owner, _state->next_messages.keys()) {
+    if(_state->scheduler->slot_open) {
+      int offset = _state->scheduler->base_msg_length;
+      foreach(int owner, _state->scheduler->messages.keys()) {
         if(owner == _state->my_idx) {
           break;
         }
-        offset += _state->next_messages[owner];
+        offset += _state->scheduler->messages[owner];
       }
 
       QByteArray my_msg = GenerateSlotMessage();
@@ -1033,11 +1031,10 @@ namespace Anonymity {
         "starting at" << offset << "for" << my_msg.size() << "bytes.";
 
     } else if(CheckData()) {
-      qDebug() << "Opening my slot" << _state->my_idx;
+      qDebug() << "Requesting to open my slot" << _state->my_idx;
       xor_msg[_state->my_idx / 8] = xor_msg[_state->my_idx / 8] ^
         bit_masks[_state->my_idx % 8];
-      _state->read = false;
-      _state->slot_open = true;
+      _state->scheduler->RequestingOpenSlot();
     }
 
 #ifdef BAD_CS_BULK
@@ -1070,13 +1067,13 @@ namespace Anonymity {
   QByteArray CSBulkRound::GenerateSlotMessage()
   {
     QByteArray msg = _state->next_msg;
-    if(_state->read) {
+    if(_state->scheduler->read) {
       QPair<QByteArray, bool> pair = GetData(MAX_GET);
       _state->last_msg = _state->next_msg;
       _state->next_msg = pair.first;
     } else {
       msg = _state->last_msg;
-      _state->read = true;
+      _state->scheduler->read = true;
     }
 
     QByteArray msg_p(8, 0);
@@ -1084,7 +1081,7 @@ namespace Anonymity {
     int length = _state->next_msg.size() + SlotHeaderLength(_state->my_idx);
 #ifdef CSBR_CLOSE_SLOT
     if(_state->next_msg.size() == 0) {
-      _state->slot_open = false;
+      _state->scheduler->CloseMySlot();
       length = 0;
     }
 #endif
@@ -1205,8 +1202,8 @@ namespace Anonymity {
     }
 
     QBitArray open(GetGroup().Count(), false);
-    for(int idx = 0; idx < _state->next_messages.size(); idx++) {
-      open[idx] = _state->next_messages[idx] != 0;
+    for(int idx = 0; idx < _state->scheduler->messages.size(); idx++) {
+      open[idx] = _state->scheduler->messages[idx] != 0;
     }
 
     QBitArray to_reveal = GetBuddyMonitor()->ShouldRevealNyms(open);
@@ -1216,7 +1213,7 @@ namespace Anonymity {
     }
 
     for(int idx = 0; idx < to_reveal.size(); idx++) {
-      int msg_length = _state->next_messages[idx];
+      int msg_length = _state->scheduler->messages[idx];
       offset += msg_length;
       if(!msg_length || to_reveal[idx]) {
         continue;
@@ -1242,7 +1239,7 @@ namespace Anonymity {
 
   void CSBulkRound::SubmitValidation()
   {
-    QByteArray cleartext(_state->msg_length, 0);
+    QByteArray cleartext(_state->scheduler->msg_length, 0);
 
     foreach(const QByteArray &ciphertext, _server_state->server_ciphertexts) {
       Xor(cleartext, cleartext, ciphertext);
@@ -1443,14 +1440,9 @@ namespace Anonymity {
   void CSBulkRound::ProcessCleartext()
   {
 //    int my_public_idx = GetGroup().GetIndex(GetLocalId());
-    int next_msg_length = _state->base_msg_length;
-    QMap<int, int> next_msgs;
     for(int idx = 0; idx < GetGroup().Count(); idx++) {
       if(_state->cleartext[idx / 8] & bit_masks[idx % 8]) {
-        int length = SlotHeaderLength(idx);
-        next_msgs[idx] = length;
-        next_msg_length += length;
-        qDebug() << "Opening slot" << idx;
+        _state->scheduler->RequestedOpenSlot(idx, SlotHeaderLength(idx));
       }
     }
 
@@ -1469,15 +1461,15 @@ namespace Anonymity {
       for(int idx = 0; idx < GetGroup().Count(); idx++) {
         if(IsServer()) {
           _server_state->current_phase_log->message_offsets.append(calc);
-          int msg_length = _state->next_messages.contains(idx) ?
-            _state->next_messages[idx] : 0;
+          int msg_length = _state->scheduler->messages.contains(idx) ?
+            _state->scheduler->messages[idx] : 0;
           calc += msg_length;
         }
       }
     }
 
-    foreach(int owner, _state->next_messages.keys()) {
-      int msg_length = _state->next_messages[owner];
+    foreach(int owner, _state->scheduler->messages.keys()) {
+      int msg_length = _state->scheduler->messages[owner];
       if(msg_length == 0) {
         continue;
       }
@@ -1489,12 +1481,11 @@ namespace Anonymity {
       QByteArray msg_pp = Derandomize(msg_ppp);
       if(msg_pp.isEmpty()) {
         qDebug() << "No message at" << owner;
-        next_msg_length += msg_length;
-        next_msgs[owner] = msg_length;
+        _state->scheduler->SetNextMsgLen(owner, msg_length);
 
         if(_state->my_idx == owner) {
-          _state->read = false;
-          _state->slot_open = true;
+          _state->scheduler->read = false;
+          _state->scheduler->slot_open = true;
           qDebug() << "My message didn't make it in time.";
         }
         continue;
@@ -1525,8 +1516,7 @@ namespace Anonymity {
       if(hashalgo.ComputeHash(msg_p) != sig) {
 #endif
         qDebug() << "Unable to verify message for peer at" << owner;
-        next_msg_length += msg_length;
-        next_msgs[owner] = msg_length;
+        _state->scheduler->SetNextMsgLen(owner, msg_length);
 
         if(owner == _state->my_idx && !_state->accuse) {
           /*
@@ -1536,8 +1526,8 @@ namespace Anonymity {
           }
           */
 
-          _state->read = false;
-          _state->slot_open = true;
+          _state->scheduler->read = false;
+          _state->scheduler->slot_open = true;
           _state->accuse = false;
           for(int pidx = 0; pidx < msg_ppp.size(); pidx++) {
             const char expected = _state->last_ciphertext[pidx];
@@ -1576,24 +1566,21 @@ namespace Anonymity {
 
       int phase = Serialization::ReadInt(msg_p, 0);
       if(phase != _state_machine.GetPhase()) {
-        next_msg_length += msg_length;
-        next_msgs[owner] = msg_length;
+        _state->scheduler->SetNextMsgLen(owner, msg_length);
         qDebug() << "Incorrect phase, skipping message";
         continue;
       }
 
       int next = Serialization::ReadInt(msg_p, 4);
       if(next < 0) {
-        next_msg_length += msg_length;
-        next_msgs[owner] = msg_length;
+        _state->scheduler->SetNextMsgLen(owner, msg_length);
         qDebug() << "Invalid next message size, skipping message";
         continue;
       } else if(next > 0) {
         qDebug() << "Slot" << owner << "next message length:" << next;
-        next_msgs[owner] = next;
-        next_msg_length += next;
+        _state->scheduler->SetNextMsgLen(owner, next);
       } else {
-        qDebug() << "Slot" << owner << "closing";
+        _state->scheduler->SlotClosed(owner);
       }
 
       QByteArray msg(msg_p.constData() + 8, msg_p.size() - 8);
@@ -1608,8 +1595,7 @@ namespace Anonymity {
       _server_state->current_phase_log->message_length = offset;
     }
 
-    _state->next_messages = next_msgs;
-    _state->msg_length = next_msg_length;
+    _state->scheduler->CompletedRound();
   }
 
   QByteArray CSBulkRound::NullSeed()

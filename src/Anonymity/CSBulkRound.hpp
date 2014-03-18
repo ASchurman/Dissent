@@ -9,6 +9,8 @@
 #include "Utils/Triple.hpp"
 #include "RoundStateMachine.hpp"
 #include "BaseBulkRound.hpp"
+#include "Scheduler.hpp"
+#include "AllSpeakScheduler.hpp"
 
 namespace Dissent {
 namespace Anonymity {
@@ -245,27 +247,26 @@ namespace Anonymity {
        */
       class State {
         public:
-          State() : accuse(false), start_accuse(false), my_accuse(false) {}
+          State() : accuse(false), start_accuse(false), my_accuse(false)
+          {
+              scheduler = QSharedPointer<Scheduler>(new AllSpeakScheduler());
+          }
           virtual ~State() {}
 
           QVector<QSharedPointer<AsymmetricKey> > anonymous_keys;
           QList<QByteArray> base_seeds;
           QVector<Crypto::CryptoRandom> anonymous_rngs;
-          QMap<int, int> next_messages;
           QHash<int, QByteArray> signatures;
           QByteArray cleartext;
           QBitArray online_clients;
 
+          QSharedPointer<Scheduler> scheduler;
           QSharedPointer<AsymmetricKey> anonymous_key;
           QByteArray shuffle_data;
-          bool read;
-          bool slot_open;
           bool accuse;
           QByteArray next_msg;
           QByteArray last_msg;
           QByteArray last_ciphertext;
-          int msg_length;
-          int base_msg_length;
           int my_idx;
           Id my_server;
           bool start_accuse;

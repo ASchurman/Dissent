@@ -81,6 +81,8 @@ HEADERS += src/Dissent.hpp \
            src/Anonymity/Sessions/Session.hpp \
            src/Anonymity/Sessions/SessionLeader.hpp \
            src/Anonymity/Sessions/SessionManager.hpp \
+           src/Anonymity/Scheduler.hpp \
+           src/Anonymity/AllSpeakScheduler.hpp \
            src/Applications/AuthFactory.hpp \
            src/Applications/CommandLine.hpp \
            src/Applications/ConsoleSink.hpp \
@@ -258,6 +260,8 @@ SOURCES += src/Anonymity/BaseBulkRound.cpp \
            src/Anonymity/Sessions/Session.cpp \
            src/Anonymity/Sessions/SessionLeader.cpp \
            src/Anonymity/Sessions/SessionManager.cpp \
+           src/Anonymity/Scheduler.cpp \
+           src/Anonymity/AllSpeakScheduler.cpp \
            src/Applications/AuthFactory.cpp \
            src/Applications/CommandLine.cpp \
            src/Applications/ConsoleSink.cpp \

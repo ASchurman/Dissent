@@ -29,12 +29,12 @@ namespace Tests {
       virtual QByteArray GenerateCiphertext()
       {
         QByteArray msg = CSBulkRound::GenerateCiphertext();
-        if(msg.size() == GetState()->base_msg_length) {
+        if(msg.size() == GetState()->scheduler->base_msg_length) {
           qDebug() << "No damage done";
           return msg;
         }
 
-        int offset = Random::GetInstance().GetInt(GetState()->base_msg_length + 1, msg.size());
+        int offset = Random::GetInstance().GetInt(GetState()->scheduler->base_msg_length + 1, msg.size());
         msg[offset] = msg[offset] ^ 0xff;
         qDebug() << "up to no good";
         Triggerable::SetTriggered();
