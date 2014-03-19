@@ -11,6 +11,7 @@
 #include "BaseBulkRound.hpp"
 #include "Scheduler.hpp"
 #include "AllSpeakScheduler.hpp"
+#include "QueueScheduler.hpp"
 
 namespace Dissent {
 namespace Anonymity {
@@ -249,7 +250,8 @@ namespace Anonymity {
         public:
           State() : accuse(false), start_accuse(false), my_accuse(false)
           {
-              scheduler = QSharedPointer<Scheduler>(new AllSpeakScheduler());
+              // TODO-AMS use ifdef to pick b/w schedulers
+              scheduler = QSharedPointer<Scheduler>(new QueueScheduler());
           }
           virtual ~State() {}
 
@@ -267,7 +269,6 @@ namespace Anonymity {
           QByteArray next_msg;
           QByteArray last_msg;
           QByteArray last_ciphertext;
-          int my_idx;
           Id my_server;
           bool start_accuse;
           int accuser;

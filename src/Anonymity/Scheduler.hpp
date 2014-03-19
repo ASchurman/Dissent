@@ -73,6 +73,8 @@ namespace Anonymity {
       inline int MessageLength() { return msg_length; }
       inline int BaseMessageLength() { return base_msg_length; }
 
+      int my_idx;
+
       /**
        * True if we should read our message queue
        */
