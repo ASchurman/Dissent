@@ -205,6 +205,8 @@ namespace Anonymity {
 #endif
       }
 
+      virtual bool RequestCloseSlot();
+
     protected:
       typedef Utils::Random Random;
 
@@ -248,7 +250,8 @@ namespace Anonymity {
        */
       class State {
         public:
-          State() : accuse(false), start_accuse(false), my_accuse(false)
+          State() : accuse(false), start_accuse(false), my_accuse(false),
+            close_slot(false)
           {
               // TODO-AMS use ifdef to pick b/w schedulers
               scheduler = QSharedPointer<Scheduler>(new QueueScheduler());
@@ -276,6 +279,7 @@ namespace Anonymity {
           int accuse_idx;
           int blame_phase;
           QSharedPointer<Round> blame_shuffle;
+          bool close_slot;
       };
 
       QSharedPointer<State> GetState() { return _state; }

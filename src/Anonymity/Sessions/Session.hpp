@@ -83,6 +83,12 @@ namespace Sessions {
       virtual void Send(const QByteArray &data);
 
       /**
+       * From a client software. Request to close my slot.
+       * @return True if successful
+       */
+      virtual bool RequestCloseSlot() { return _current_round->RequestCloseSlot(); }
+
+      /**
        * Returns the Session Id
        */
       inline const Id &GetSessionId() const { return _session_id; }

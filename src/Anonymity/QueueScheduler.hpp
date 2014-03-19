@@ -6,11 +6,16 @@
 
 #include "Scheduler.hpp"
 
-// TODO-AMS work on manually closing slots
-
 namespace Dissent {
 namespace Anonymity {
 
+  /**
+   * Scheduler in which only a single node has an open slot at a time.
+   * Additional nodes that request to open slots are queued.
+   * The speaker's slot is closed and a new speaker is taken from the queue
+   * after a certain number of rounds or when the speaker requests to close
+   * its slot.
+   */
   class QueueScheduler : public Scheduler
   {
   public:
@@ -48,6 +53,8 @@ namespace Anonymity {
     virtual void RequestedCloseSlot(int idx);
 
     virtual void CompletedRound();
+
+    virtual bool CanCloseSlot() { return speaker == my_idx; }
 
   protected:
     void CloseSlot();

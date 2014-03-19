@@ -1008,7 +1008,14 @@ namespace Anonymity {
       Xor(xor_msg, xor_msg, tmsg);
     }
 
-    if(_state->scheduler->SlotOpen()) {
+    if(_state->scheduler->SlotOpen() && _state->close_slot) {
+      _state->close_slot = false;
+      qDebug() << "Requesting to close my slot" << _state->scheduler->my_idx;
+      xor_msg[_state->scheduler->my_idx / 8] = xor_msg[_state->scheduler->my_idx / 8] ^
+        bit_masks[_state->scheduler->my_idx % 8];
+      _state->scheduler->RequestingCloseSlot();
+
+    } else if(_state->scheduler->SlotOpen()) {
       int offset = _state->scheduler->BaseMessageLength();
       foreach(int owner, _state->scheduler->messages.keys()) {
         if(owner == _state->scheduler->my_idx) {
@@ -1435,10 +1442,16 @@ namespace Anonymity {
 
   void CSBulkRound::ProcessCleartext()
   {
+    int closed_idx = -1;
 //    int my_public_idx = GetGroup().GetIndex(GetLocalId());
     for(int idx = 0; idx < GetGroup().Count(); idx++) {
       if(_state->cleartext[idx / 8] & bit_masks[idx % 8]) {
-        _state->scheduler->RequestedOpenSlot(idx, SlotHeaderLength(idx));
+        if(_state->scheduler->messages[idx] > 0) {
+          _state->scheduler->RequestedCloseSlot(idx);
+          closed_idx = idx;
+        } else {
+          _state->scheduler->RequestedOpenSlot(idx, SlotHeaderLength(idx));
+        }
       }
     }
 
@@ -1466,7 +1479,7 @@ namespace Anonymity {
 
     foreach(int owner, _state->scheduler->messages.keys()) {
       int msg_length = _state->scheduler->messages[owner];
-      if(msg_length == 0) {
+      if(msg_length == 0 || owner == closed_idx) {
         continue;
       }
 
@@ -1710,6 +1723,12 @@ namespace Anonymity {
     QByteArray server_dh = GetGroup().GetIdentity(bid).GetDhKey();
     QByteArray proof = GetPrivateIdentity().GetDhKey().ProveSharedSecret(server_dh);
     return QPair<int, QByteArray>(bidx, proof);
+  }
+
+  bool CSBulkRound::RequestCloseSlot()
+  {
+    _state->close_slot = _state->scheduler->CanCloseSlot();
+    return _state->close_slot;
   }
 }
 }

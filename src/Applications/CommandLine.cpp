@@ -85,6 +85,7 @@ namespace Applications {
       _qtout << "\tcurrent - print the index of the current node" << endl;
       _qtout << "\tselect index - use the node at index to execute command" << endl;
       _qtout << "\tsend \"msg\" - send \"msg\" to Dissent round" << endl;
+      _qtout << "\tclose - request to close the current node's slot" << endl;
       _qtout << "\texit - kill the node and exit to command line" << endl;
     } else if(cmd == "current") {
       _qtout << "Current node: " << QString::number(_current_node) << endl;
@@ -98,14 +99,19 @@ namespace Applications {
       } else {
         _qtout << endl << "Invalid entry: " << msg;
       }
-    } else if(cmd == "send") {
+    } else if(cmd == "send" || cmd == "close") {
       QSharedPointer<Session> session = _nodes[_current_node]->
         GetSessionManager().GetDefaultSession();
       if(session.isNull()) {
         _qtout << endl << "No session set, try again later." << endl;
         return;
       }
-      session->Send(msg.toUtf8());
+
+      if(cmd == "send") {
+        session->Send(msg.toUtf8());
+      } else if(!session->RequestCloseSlot()) {
+        _qtout << endl << "Cannot request to close the node's slot." << endl;
+      }
     } else if(cmd == "") {
     } else {
       _qtout << "Unknown command, " << cmd << ", type help for more " <<

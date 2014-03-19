@@ -69,6 +69,8 @@ namespace Anonymity {
         next_msg_length = base_msg_length;
       }
 
+      virtual bool CanCloseSlot() { return false; }
+
       inline bool SlotOpen() { return slot_open; }
       inline int MessageLength() { return msg_length; }
       inline int BaseMessageLength() { return base_msg_length; }

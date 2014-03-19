@@ -6,6 +6,10 @@
 namespace Dissent {
 namespace Anonymity {
 
+  /**
+   * Scheduler in which all nodes can have slots opened as soon as they
+   * request it.
+   */
   class AllSpeakScheduler : public Scheduler
   {
   public:
