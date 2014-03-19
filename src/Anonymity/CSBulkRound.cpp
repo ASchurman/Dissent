@@ -373,10 +373,10 @@ namespace Anonymity {
     QBitArray online;
     stream >> signatures >> cleartext >> online;
 
-    if(cleartext.size() != _state->scheduler->msg_length) {
+    if(cleartext.size() != _state->scheduler->MessageLength()) {
       throw QRunTimeError("Cleartext size mismatch: " +
           QString::number(cleartext.size()) + " :: " +
-          QString::number(_state->scheduler->msg_length));
+          QString::number(_state->scheduler->MessageLength()));
     }
 
     Hash hash;
@@ -428,10 +428,10 @@ namespace Anonymity {
     QByteArray payload;
     stream >> payload;
 
-    if(payload.size() != _server_state->scheduler->msg_length) {
+    if(payload.size() != _server_state->scheduler->MessageLength()) {
       throw QRunTimeError("Incorrect message length, got " +
           QString::number(payload.size()) + " expected " +
-          QString::number(_server_state->scheduler->msg_length));
+          QString::number(_server_state->scheduler->MessageLength()));
     }
 
     _server_state->handled_clients[idx] = true;
@@ -550,10 +550,10 @@ namespace Anonymity {
     QByteArray ciphertext;
     stream >> ciphertext;
 
-    if(ciphertext.size() != _server_state->scheduler->msg_length) {
+    if(ciphertext.size() != _server_state->scheduler->MessageLength()) {
       throw QRunTimeError("Incorrect message length, got " +
           QString::number(ciphertext.size()) + " expected " +
-          QString::number(_server_state->scheduler->msg_length));
+          QString::number(_server_state->scheduler->MessageLength()));
     }
 
     QByteArray commit = Hash().ComputeHash(ciphertext);
@@ -902,11 +902,7 @@ namespace Anonymity {
 
   void CSBulkRound::PrepareForBulk()
   {
-    _state->scheduler->msg_length = (GetGroup().Count() / 8);
-    if(GetGroup().Count() % 8) {
-      ++_state->scheduler->msg_length;
-    }
-    _state->scheduler->SetBaseMessageLength(_state->scheduler->msg_length);
+    _state->scheduler->SetBaseMessageLength(GetGroup().Count());
 
     SetupRngSeeds();
     _state_machine.StateComplete();
@@ -999,8 +995,8 @@ namespace Anonymity {
 
   QByteArray CSBulkRound::GenerateCiphertext()
   {
-    QByteArray xor_msg(_state->scheduler->msg_length, 0);
-    QByteArray tmsg(_state->scheduler->msg_length, 0);
+    QByteArray xor_msg(_state->scheduler->MessageLength(), 0);
+    QByteArray tmsg(_state->scheduler->MessageLength(), 0);
     
     int idx = 0;
     for(int jdx = 0; jdx < _state->anonymous_rngs.size(); jdx++) {
@@ -1012,8 +1008,8 @@ namespace Anonymity {
       Xor(xor_msg, xor_msg, tmsg);
     }
 
-    if(_state->scheduler->slot_open) {
-      int offset = _state->scheduler->base_msg_length;
+    if(_state->scheduler->SlotOpen()) {
+      int offset = _state->scheduler->BaseMessageLength();
       foreach(int owner, _state->scheduler->messages.keys()) {
         if(owner == _state->my_idx) {
           break;
@@ -1239,7 +1235,7 @@ namespace Anonymity {
 
   void CSBulkRound::SubmitValidation()
   {
-    QByteArray cleartext(_state->scheduler->msg_length, 0);
+    QByteArray cleartext(_state->scheduler->MessageLength(), 0);
 
     foreach(const QByteArray &ciphertext, _server_state->server_ciphertexts) {
       Xor(cleartext, cleartext, ciphertext);
@@ -1485,7 +1481,7 @@ namespace Anonymity {
 
         if(_state->my_idx == owner) {
           _state->scheduler->read = false;
-          _state->scheduler->slot_open = true;
+          //_state->scheduler->slot_open = true; Shouldn't be necessary; slot already open
           qDebug() << "My message didn't make it in time.";
         }
         continue;
@@ -1527,7 +1523,7 @@ namespace Anonymity {
           */
 
           _state->scheduler->read = false;
-          _state->scheduler->slot_open = true;
+          //_state->scheduler->slot_open = true; Shouldn't be necessary; slot already open
           _state->accuse = false;
           for(int pidx = 0; pidx < msg_ppp.size(); pidx++) {
             const char expected = _state->last_ciphertext[pidx];
@@ -1580,7 +1576,7 @@ namespace Anonymity {
         qDebug() << "Slot" << owner << "next message length:" << next;
         _state->scheduler->SetNextMsgLen(owner, next);
       } else {
-        _state->scheduler->SlotClosed(owner);
+        _state->scheduler->RequestedCloseSlot(owner);
       }
 
       QByteArray msg(msg_p.constData() + 8, msg_p.size() - 8);

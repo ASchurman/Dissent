@@ -22,7 +22,7 @@ namespace Anonymity {
       /**
        * Analogous to RequestingOpenSlot. Called when I am closing my slot.
        */
-      virtual void CloseMySlot();
+      virtual void RequestingCloseSlot();
 
       /**
        * Called when a user requested their slot to be opened
@@ -36,7 +36,7 @@ namespace Anonymity {
        * their slot to be closed
        * @param idx the slot number requested to close
        */
-      virtual void SlotClosed(int idx);
+      virtual void RequestedCloseSlot(int idx);
   };
 
 }

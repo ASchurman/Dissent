@@ -25,7 +25,7 @@ namespace Anonymity {
       /**
        * Analogous to RequestingOpenSlot. Called when I am closing my slot.
        */
-      virtual void CloseMySlot() = 0;
+      virtual void RequestingCloseSlot() = 0;
 
       /**
        * Called when a user requested their slot to be opened
@@ -39,7 +39,7 @@ namespace Anonymity {
        * their slot to be closed
        * @param idx the slot number requested to close
        */
-      virtual void SlotClosed(int idx) = 0;
+      virtual void RequestedCloseSlot(int idx) = 0;
 
       /**
        * Set the length of a slot for the next round. The slot should already
@@ -59,12 +59,19 @@ namespace Anonymity {
        */
       virtual void CompletedRound();
 
-      virtual inline void SetBaseMessageLength(int len)
+      inline void SetBaseMessageLength(int group_count)
       {
-        base_msg_length = len;
-        next_msg_length = len;
+        msg_length = (group_count / 8);
+        if(group_count % 8) {
+          ++msg_length;
+        }
+        base_msg_length = msg_length;
+        next_msg_length = base_msg_length;
       }
 
+      inline bool SlotOpen() { return slot_open; }
+      inline int MessageLength() { return msg_length; }
+      inline int BaseMessageLength() { return base_msg_length; }
 
       /**
        * True if we should read our message queue
@@ -72,23 +79,34 @@ namespace Anonymity {
       bool read;
 
       /**
-       * True if my slot is open
-       */
-      bool slot_open;
-
-      /**
        * Holds the length of each slot. Keyed by slot number. 0 if the slot is
        * closed.
        */
       QMap<int, int> messages;
 
+  protected:
+      /**
+       * True if my slot is open
+       */
+      bool slot_open;
+
+      /**
+       * Total length of the message, including all slots
+       */
       int msg_length;
 
       int base_msg_length;
 
-  protected:
+      /**
+       * Holds the length of each slot for the upcoming round. 0 if the slot is
+       * closed.
+       */
       QMap<int, int> next_messages;
 
+      /**
+       * Total length of hte message for the upcoming round, including all
+       * slots
+       */
       int next_msg_length;
   };
 

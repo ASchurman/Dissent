@@ -12,7 +12,7 @@ namespace Anonymity {
     slot_open = true;
   }
 
-  void AllSpeakScheduler::CloseMySlot()
+  void AllSpeakScheduler::RequestingCloseSlot()
   {
     slot_open = false;
   }
@@ -24,7 +24,7 @@ namespace Anonymity {
     qDebug() << "Opening slot" << idx;
   }
 
-  void AllSpeakScheduler::SlotClosed(int idx)
+  void AllSpeakScheduler::RequestedCloseSlot(int idx)
   {
     qDebug() << "Slot" << idx << "closing";
   }
