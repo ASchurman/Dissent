@@ -36,11 +36,15 @@ namespace Anonymity {
   {
     // check to see if current speaker is allowed to continue
     if (speaker >= 0) {
-      speaker_timer--;
       if (speaker_timer == 0) {
-        qDebug() << "Time's up! Closing slot" << speaker;
-        CloseSlot();
+        if (queue.isEmpty()) {
+          qDebug() << "Time's up for " << speaker << " but queue is empty";
+        } else {
+          qDebug() << "Time's up! Closing slot" << speaker;
+          CloseSlot();
+        }
       } else {
+        speaker_timer--;
         qDebug() << speaker_timer << " rounds left for speaker " << speaker;
       }
     }
