@@ -13,7 +13,9 @@ namespace Anonymity {
   class AllSpeakScheduler : public Scheduler
   {
   public:
-      AllSpeakScheduler() {}
+      AllSpeakScheduler(const PrivateIdentity &ident) :
+        Scheduler(ident)
+      { }
 
       virtual ~AllSpeakScheduler() {}
 

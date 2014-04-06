@@ -32,12 +32,14 @@ namespace Identity {
           QSharedPointer<AsymmetricKey> signing_key = QSharedPointer<AsymmetricKey>(),
           QSharedPointer<AsymmetricKey> decryption_key = QSharedPointer<AsymmetricKey>(),
           DiffieHellman dh_key = DiffieHellman(),
-          bool super_peer = true) :
+          bool super_peer = true,
+          bool moderator = false) :
         _local_id(local_id),
         _signing_key(signing_key),
         _decryption_key(decryption_key),
         _dh_key(dh_key),
-        _super_peer(super_peer)
+        _super_peer(super_peer),
+        _moderator(moderator)
       {
       }
 
@@ -66,12 +68,15 @@ namespace Identity {
        */
       bool GetSuperPeer() const { return _super_peer; }
 
+      bool GetModerator() const { return _moderator; }
+
     private:
       Id _local_id;
       QSharedPointer<AsymmetricKey> _signing_key;
       QSharedPointer<AsymmetricKey> _decryption_key;
       DiffieHellman _dh_key;
       bool _super_peer;
+      bool _moderator;
   };
 
   inline PublicIdentity GetPublicIdentity(const PrivateIdentity &ident)
@@ -90,7 +95,7 @@ namespace Identity {
     dh_pub = ident.GetDhKey().GetPublicComponent();
 
     return PublicIdentity(ident.GetLocalId(), v_key, d_key, dh_pub,
-        ident.GetSuperPeer());
+        ident.GetSuperPeer(), ident.GetModerator());
   }
 }
 }

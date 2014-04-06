@@ -3,6 +3,8 @@
 
 #include <QMap>
 
+#include "Identity/PrivateIdentity.hpp"
+
 namespace Dissent {
 namespace Anonymity {
 
@@ -12,7 +14,38 @@ namespace Anonymity {
   class Scheduler
   {
   public:
-      Scheduler() : slot_open(false) {}
+      typedef Identity::PrivateIdentity PrivateIdentity;
+
+      enum SchedulerType
+      {
+        INVALID,
+        AllSpeakScheduler,
+        QueueScheduler
+      };
+
+      static SchedulerType StringToSchedulerType(const QString& s)
+      {
+        if (s == "allspeak") {
+          return AllSpeakScheduler;
+        } else if (s == "queue") {
+          return QueueScheduler;
+        } else {
+          return INVALID;
+        }
+      }
+
+      static QString SchedulerTypeToString(SchedulerType t)
+      {
+        if (t == AllSpeakScheduler) {
+          return "allspeak";
+        } else if (t == QueueScheduler) {
+          return "queue";
+        } else {
+          return "INVALID";
+        }
+      }
+
+      Scheduler(const PrivateIdentity &ident) : slot_open(false), _ident(ident) {}
 
       virtual ~Scheduler() {}
 
@@ -89,6 +122,8 @@ namespace Anonymity {
       QMap<int, int> messages;
 
   protected:
+      inline const PrivateIdentity &GetPrivateIdentity() const { return _ident; }
+
       /**
        * True if my slot is open
        */
@@ -112,6 +147,9 @@ namespace Anonymity {
        * slots
        */
       int next_msg_length;
+
+  private:
+      const PrivateIdentity &_ident;
   };
 
 }

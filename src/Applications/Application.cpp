@@ -55,6 +55,7 @@ int main(int argc, char **argv)
 
   bool force_super_peer = local[0].GetType().compare("buffer") == 0;
   bool super_peer = settings.SuperPeer || force_super_peer;
+  bool moderator = settings.Moderator;
 
   QSharedPointer<KeyShare> keys(new KeyShare(settings.PublicKeys));
 
@@ -73,7 +74,7 @@ int main(int argc, char **argv)
       dh = DiffieHellman(id);
     }
 
-    nodes.append(create(PrivateIdentity(local_id, key, key, dh, super_peer),
+    nodes.append(create(PrivateIdentity(local_id, key, key, dh, super_peer, moderator),
           group, local, remote, (idx == 0 ? app_sink.dynamicCast<ISink>() : default_sink),
           settings.SessionType, settings.AuthMode, keys));
     local[0] = AddressFactory::GetInstance().CreateAny(local[0].GetType());

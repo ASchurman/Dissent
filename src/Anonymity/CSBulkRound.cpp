@@ -128,6 +128,9 @@ namespace Anonymity {
   {
     _server_state = QSharedPointer<ServerState>(new ServerState());
     _state = _server_state;
+
+    InitScheduler();
+
     Q_ASSERT(_state);
     _server_state->handled_servers_bits = QBitArray(GetGroup().Count(), false);
     foreach(const PublicIdentity &ident, GetGroup().GetSubgroup()) {
@@ -225,6 +228,9 @@ namespace Anonymity {
   void CSBulkRound::InitClient()
   {
     _state = QSharedPointer<State>(new State());
+
+    InitScheduler();
+
     foreach(const QSharedPointer<Connection> &con,
         GetNetwork()->GetConnectionManager()->
         GetConnectionTable().GetConnections())
@@ -250,6 +256,21 @@ namespace Anonymity {
 
     _state_machine.AddTransition(WAITING_FOR_BLAME_SHUFFLE,
         WAITING_FOR_DATA_REQUEST_OR_VERDICT);
+  }
+
+  void CSBulkRound::InitScheduler()
+  {
+    if (Settings::SchedulerType == Scheduler::AllSpeakScheduler) {
+      qDebug() << "Initializing CSBulkRound with AllSpeakScheduler";
+      _state->scheduler = QSharedPointer<Scheduler>(new AllSpeakScheduler(GetPrivateIdentity()));
+    } else if (Settings::SchedulerType == Scheduler::QueueScheduler) {
+      int time_limit = Settings::TimeLimit;
+      qDebug() << "Initializing CSBulkRound with QueueScheduler. Time Limit: " << time_limit;
+      _state->scheduler = QSharedPointer<Scheduler>(new QueueScheduler(GetPrivateIdentity(), time_limit));
+    } else {
+      qDebug() << "Invalid scheduler type in settings. Initializing CSBulkRound with AllSpeakScheduler";
+      _state->scheduler = QSharedPointer<Scheduler>(new AllSpeakScheduler(GetPrivateIdentity()));
+    }
   }
 
   CSBulkRound::~CSBulkRound()

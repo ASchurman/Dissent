@@ -19,7 +19,11 @@ namespace Anonymity {
   class QueueScheduler : public Scheduler
   {
   public:
-    QueueScheduler() : speaker(-1) {}
+    QueueScheduler(const PrivateIdentity &ident, int time_limit) :
+      Scheduler(ident),
+      speaker(-1),
+      speaker_time_limit(time_limit)
+    { }
 
     virtual ~QueueScheduler() {}
 
@@ -54,7 +58,10 @@ namespace Anonymity {
 
     virtual void CompletedRound();
 
-    virtual bool CanCloseSlot() { return speaker == my_idx; }
+    virtual bool CanCloseSlot()
+    {
+      return speaker == my_idx || GetPrivateIdentity().GetModerator();
+    }
 
   protected:
     void CloseSlot();
@@ -72,7 +79,7 @@ namespace Anonymity {
     /**
      * Number of rounds a slot is permitted to be opened
      */
-    const int speaker_time_limit = 30;
+    int speaker_time_limit;
 
     /**
      * Number of rounds before the current speaker's slot is closed

@@ -3,6 +3,7 @@
 
 #include <QMetaEnum>
 
+#include "Applications/Settings.hpp"
 #include "Crypto/CryptoRandom.hpp"
 #include "Crypto/Hash.hpp"
 #include "Utils/TimerEvent.hpp"
@@ -47,6 +48,7 @@ namespace Anonymity {
 
     public:
       friend class RoundStateMachine<CSBulkRound>;
+      typedef Applications::Settings Settings;
 
       enum MessageType {
         CLIENT_CIPHERTEXT = 0,
@@ -252,10 +254,7 @@ namespace Anonymity {
         public:
           State() : accuse(false), start_accuse(false), my_accuse(false),
             close_slot(false)
-          {
-              // TODO-AMS use ifdef to pick b/w schedulers
-              scheduler = QSharedPointer<Scheduler>(new QueueScheduler());
-          }
+          { }
           virtual ~State() {}
 
           QVector<QSharedPointer<AsymmetricKey> > anonymous_keys;
@@ -372,6 +371,11 @@ namespace Anonymity {
        * Called by the constructor to initialize the client state machine
        */
       void InitClient();
+
+      /**
+       * Called by InitServer() and InitClient() to initialize the scheduler
+       */
+      void InitScheduler();
 
       /**
        * Called before each state transition

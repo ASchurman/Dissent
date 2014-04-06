@@ -34,8 +34,10 @@ namespace Anonymity {
 
   void QueueScheduler::CompletedRound()
   {
-    // check to see if current speaker is allowed to continue
-    if (speaker >= 0) {
+    // Check to see if current speaker is allowed to continue.
+    // If speaker_time_limit is 0, then there is no time limit, so don't check
+    // on the current timer value.
+    if (speaker_time_limit != 0 && speaker >= 0) {
       if (speaker_timer == 0) {
         if (queue.isEmpty()) {
           qDebug() << "Time's up for " << speaker << " but queue is empty";
@@ -49,7 +51,7 @@ namespace Anonymity {
       }
     }
 
-    // check to see if a new speaker should be dequeued
+    // Check to see if a new speaker should be dequeued.
     if (speaker < 0 && !queue.isEmpty()) {
       QPair<int, int> new_speaker = queue.dequeue();
       speaker = new_speaker.first;

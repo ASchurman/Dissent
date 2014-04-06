@@ -32,12 +32,14 @@ namespace Identity {
           QSharedPointer<AsymmetricKey> verification_key = QSharedPointer<AsymmetricKey>(),
           QSharedPointer<AsymmetricKey> encryption_key = QSharedPointer<AsymmetricKey>(),
           QByteArray dh_key = QByteArray(),
-          bool super_peer = true) :
+          bool super_peer = true,
+          bool moderator = false) :
         _id(id),
         _verification_key(verification_key),
         _encryption_key(encryption_key),
         _dh_key(dh_key),
-        _super_peer(super_peer)
+        _super_peer(super_peer),
+        _moderator(moderator)
       {
       }
 
@@ -72,6 +74,8 @@ namespace Identity {
        */
       bool GetSuperPeer() const { return _super_peer; }
 
+      bool GetModerator() const { return _moderator; }
+
       inline QString ToString() const
       {
         return QString("Public identity: (Id: %1, SuperPeer: %2)").arg(
@@ -84,6 +88,7 @@ namespace Identity {
       QSharedPointer<AsymmetricKey> _encryption_key;
       QByteArray _dh_key;
       bool _super_peer;
+      bool _moderator;
   };
 
   /**

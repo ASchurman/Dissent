@@ -10,6 +10,7 @@
 
 #include "Connections/Id.hpp"
 #include "Identity/Group.hpp"
+#include "Anonymity/Scheduler.hpp"
 
 #include "AuthFactory.hpp"
 #include "SessionFactory.hpp"
@@ -23,6 +24,7 @@ namespace Applications {
     public:
       typedef Connections::Id Id;
       typedef Identity::Group Group;
+      typedef Anonymity::Scheduler Scheduler;
 
       /**
        * Load configuration from disk
@@ -163,6 +165,23 @@ namespace Applications {
        */
       QString PublicKeys;
 
+      /**
+       * The CSBulk scheduling scheme. Relevant only for CSBulk
+       */
+      static Scheduler::SchedulerType SchedulerType;
+
+      /**
+       * The number of rounds for which a speaker can keep his slot open.
+       * Relevant only for queue scheduling in CSBulk
+       */
+      static int TimeLimit;
+
+      /**
+       * Moderator able to close the slot of the current speaker? Relevant
+       * only for queue scheduling in CSBulk
+       */
+      bool Moderator;
+
       bool Help;
 
       static const char* CParam(int id)
@@ -186,7 +205,10 @@ namespace Applications {
           "subgroup_policy",
           "super_peer",
           "path_to_private_key",
-          "path_to_public_keys"
+          "path_to_public_keys",
+          "moderator",
+          "speaker_time_limit",
+          "scheduler_type"
         };
         return params[id];
       }
@@ -212,7 +234,10 @@ namespace Applications {
             SubgroupPolicy,
             SuperPeer,
             PrivateKey,
-            PublicKeys
+            PublicKeys,
+            Moderator,
+            TimeLimit,
+            SchedulerType
           };
       };
 

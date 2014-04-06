@@ -7,6 +7,9 @@ using Dissent::Utils::Logging;
 
 namespace Dissent {
 namespace Applications {
+  int Settings::TimeLimit = 0;
+  Anonymity::Scheduler::SchedulerType Settings::SchedulerType = Anonymity::Scheduler::INVALID;
+
   Settings::Settings(const QString &file, bool actions) :
     _use_file(true),
     _settings(new QSettings(file, QSettings::IniFormat))
@@ -114,8 +117,20 @@ namespace Applications {
 
     SuperPeer = _settings->value(Param<Params::SuperPeer>(), false).toBool();
 
-
     PublicKeys = _settings->value(Param<Params::PublicKeys>()).toString();
+
+    Moderator = _settings->value(Param<Params::Moderator>(), false).toBool();
+
+    if(_settings->contains(Param<Params::TimeLimit>())) {
+      TimeLimit = _settings->value(Param<Params::TimeLimit>()).toInt();
+    }
+
+    if(_settings->contains(Param<Params::SchedulerType>())) {
+      QString schtype = _settings->value(Param<Params::SchedulerType>()).toString();
+      SchedulerType = Scheduler::StringToSchedulerType(schtype);
+    } else {
+      SchedulerType = Scheduler::AllSpeakScheduler;
+    }
 
     if(_settings->contains(Param<Params::PrivateKey>())) {
       QVariant vkeys = _settings->value(Param<Params::PrivateKey>());
@@ -180,6 +195,11 @@ namespace Applications {
 
     if(SessionType == SessionFactory::INVALID) {
       _reason = "Invalid session type";
+      return false;
+    }
+
+    if(SchedulerType == Scheduler::INVALID) {
+      _reason = "Invalid scheduler type";
       return false;
     }
 
@@ -391,6 +411,18 @@ namespace Applications {
     options->add(Param<Params::PublicKeys>(),
         "a path to a directory containing public keys (public keys end in \".pub\"",
         QxtCommandOptions::ValueRequired);
+
+    options->add(Param<Params::SchedulerType>(),
+        "CSBulk scheduler type: allspeak or queue",
+        QxtCommandOptions::ValueRequired);
+
+    options->add(Param<Params::TimeLimit>(),
+        "Limit in rounds for a speaker's slot to be open in queue scheduler; 0 for no limit",
+        QxtCommandOptions::ValueRequired);
+
+    options->add(Param<Params::Moderator>(),
+        "sets this peer as a moderator able to close the current speaker's slot",
+        QxtCommandOptions::NoValue);
 
     return options;
   }
