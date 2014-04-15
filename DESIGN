@@ -78,8 +78,7 @@ followed by an overlay-level connection.  The owner of the incoming connection
 transmits an Inquire message and the outgoing connection owner responds with an
 Inquired; these messages establish the overlay Id of each peer.
 
-I -> O Inquire (PeerId_I | TransportAddress_O |
-                GroupId | DissentVersion)
+I -> O Inquire (PeerId_I | TransportAddress_O | DissentVersion)
 
 - PeerId_I - Connections:Id as QByteArray - Inbound overlay Id
 - TransportAddress_O - Transports::Address as a QString - Outbound Transport
@@ -110,7 +109,7 @@ A -> B Init ([PeerId_A | I Nonce | Timestamp | GroupId]_[Signature_A])
 - I Nonce - QByteArray - Nonce used to ensure uniqueness of Init messages
 - Timestamp - 64-bit integer - Time since the "Epoch", ensure causality of
   Init messages
-- GroupId - QByteArray - The hash of the group information
+- GroupId - QByteArray - The hash of the group roster
 - Signature_A - QByteArray - Signature on [PeerId_A | Init Message |
   EphemeralPublicKey_A | Optional_A], should use A's well known public key
 
@@ -157,15 +156,21 @@ following process: RoundId = SHA1([Enlist]) ordered by the Id of the servers.
 Thus the ephemeral key in the Enlist message serves as a guarantee that under
 the anytrust model the RoundId has some randomness.
 
-A -> B Agree ([PeerId_A | RoundId | EphemeralPublicKey_A |
+Upon conclusion of producing a RoundId, servers distribute an Agree message,
+which contains most of the fields of the Enlist message; however, the Init
+Message will be replaced by the RoundId.
+
+A -> B Agree ([PeerId_A | RoundId | Timestamp | EphemeralPublicKey_A |
                Optional_A]_[Signature_A])
 
 - PeerId_A - Connections::Id as QByteArray - A's overlay Id
 - RoundId - QByteArray - RoundId to be used in the upcoming protocol round
+- Timestamp - 64-bit integer - Copied from the Init messages, so clients can
+  distinguish causality of Queued messages
 - EphemeralPublicKey_A - QByteArray of DSA key - A's ephemeral key to be used
   in operations during protocol exchanges
 - Optional_A - QVariant - Additional data necessary for the protocol round
-- Signature_A - QByteArray - Signature on [PeerId_A | RoundId |
+- Signature_A - QByteArray - Signature on [PeerId_A | RoundId | Timestamp |
   EphemeralPublicKey_A | Optional_A], should use A's well known public key
 
 ==============================================================================
@@ -175,27 +180,14 @@ IV.   Round bootstrapping -- Client Setup
 At the conclusion of this process, servers allow clients to register.  Prior to
 registering, clients must connect to a server using the same process as servers
 connect to each other, Inquire and Inquired messages. First establishing a
-transport-level connection, followed by an overlay-level connection.
+transport-level connection, followed by an overlay-level connection.  When the
+servers have completed the round identifier generation, they notify each
+connected client via a Queued message containing the accumulated Agree messages
+exchanged by the servers.  
 
-During registration, clients first transmit a Queue message to enter the
-registration queue. Queue messages contain a client temporary nonce as a means
-to authenticate the upstream servers to prevent replay attacks.
-
-C -> S Queue (Nonce_C)
-
-- Nonce_C - QByteArray - Client introduced nonce to prevent man in the middle
-  attacks between the client and the upstream server
-
-When the servers have completed the round identifier generation, they respond
-to these messages with a Queued message containing the accumulated Agree
-messages exchanged by the servers.  
-
-S -> C Queued ([AgreeMessages | Nonce_C]_[Signature_S])
+S -> C Queued (AgreeMessages)
 
 - AgreeMessages - All of the server Agree messages
-- Nonce_C - The client nonce specified in the Queue message
-- Signature - QByteArray - Signature on [Agree Messages | Nonce_C],
-  should use the servers well known public key that matches the PeerId
 
 Clients then respond with a Register message containing a third-party
 verifiable authentication context, a signature using private key cryptography,
@@ -206,15 +198,13 @@ clients should prepare their round to receive messages but not process them.
 C -> S Register ([PeerId_C | RoundId | EphemeralPublicKey_C |
                   Optional_C]_[Signature_C])
 
-- PeerId_C - Connections::Id as QByteArray - Local Peer's overlay Id
+- PeerId_C - Connections::Id as QByteArray - Sender's overlay Id
 - RoundId_C - QByteArray - A identifier to use in the upcoming protocol round
 - EphemeralPublicKey_C - QByteArray of DSA key - The ephemeral key to
   be used in operations during protocol exchanges
 - Optional_C - QVariant - Additional data necessary for the protocol round
-- Signature_C - QByteArray - Depends on the authentication type, could be a
-  DSA signature from a pre-exchanged key, an LRS signature from an agreed
-  upon group of public keys, the format of the signature is depends on the
-  group configuration.
+- Signature_C - QByteArray - A public key signature using C's well-known public
+  key against PeerId_C, RoundId_C, EphemeralPublicKey_C, and Optional_C.
 
 Upon beginning the registration process, each server accepts registration
 messages for 5 minutes from their own prospective. After this registration
@@ -229,31 +219,32 @@ List - [ListOfRegister_A]_[Signature_A]
 - Signature_A - QByteArray - Signature on QByteArray format of the List of
   Register
 
-Upon receiving the List from all servers, a server constructs a complete list
-consisting of all clients, eliminating duplicate identities, and then hashes
-the resulting list.  Servers then sign the resulting list and share among each
-other their signatures via the VerifyList.  Clients authenticating with
-multiple servers and using different entries for each server are removed.
-Since this process is deterministic, servers need not share the list. Prior to
-sending the VerifyList, servers should prepare to receive protocol round
-messages.
+Upon receiving the List from all servers, a server computes the union of all
+ListOfRegisters, eliminates duplicates by favoring the server ordered earlier
+in the configuration file and then hashes the resulting list.  Servers then
+sign the resulting list and share among each other their signatures via the
+VerifyList.  Clients authenticating with multiple servers and using different
+entries for each server are removed.  Since this process is deterministic,
+servers need not share the list. Prior to sending the VerifyList, servers
+should prepare to receive protocol round messages.
 
-A -> B VerifyList (Signature_A(ListOfRegister))
+A -> B VerifyList (Signature_A(CompleteListOfRegister))
 
 VerifyList - Signature on Complete List of Register
-- Signature_A - QByteArray - Signature on the hashed accumulated List of Register
+- Signature_A - QByteArray - Signature on the hashed Complete List of Register
 
 Upon receiving all signatures, servers can begin the round and simultaneously
 transmit a Start message to clients initiating the beginning of the protocol
 round.  A client registering with multiple servers remains connected to the
 server with the lowest Id specified in the configuration.
 
-S -> C Start (ListOfRegister | VerifyListSignatures)
+S -> C Start (CompleteListOfRegister | VerifyListSignatures)
 
 Start - Complete List of Register | VerifyListSignatures
-- ListOfRegister - int | [ClientRegister] - List of all the Register messages
-- VerifyListSignatures - QVariantList - Set of all signatures for the
-  accumulated list
+- CompleteListOfRegister - int | [ClientRegister] - List of all the
+  Register messages
+- VerifyListSignatures - QVariantList - Set of server signatures for the
+  complete list of Register messages
 
 A protocol round constitutes one or more anonymous exchanges.  The protocol
 round continues for at least 1 exchange or 60 minutes, whichever is longer. At
@@ -279,31 +270,325 @@ clients' Queue.
 ==============================================================================
 V.    Anonymity protocols
 ==============================================================================
-Protocol -- Neff Shuffle:
+A.    Neff Shuffle
+==============================================================================
+Neff Shuffle performs a El Gamal style mix net, in which each participant has
+one communication slot and the transactions between each servers can be
+verified for correctness. Neff Shuffle operates in two modes: an efficient key
+shuffle and a less efficient arbitrary data mode. The only difference being the
+key parameters used by the shuffle. The protocol executes among a set of
+clients, who want to transmit some data, and a set of servers who perform the
+shuffle.
 
-TODO
+1) Servers prepare an ephemeral key and distribute that to all other servers.
+To prepare a key, servers use a random number generator seeded by the RoundId
+to deterministically produce a group-wide private key whose parameters define
+the parameters for these keys. The ephemeral keys are shared as follows:
+
+A -> B ([SERVER_KEY | RoundId | EphemeralPublicKey_A]_[Signature_A])
+- SERVER_KEY - int - the message type
+- RoundId - QByteArray - The round identifier
+- EphemeralPublicKey_A - QByteArray of DSA key - A's ephemeral key to be used
+  in operations during protocol exchanges
+- Signature_A - Signature using the round key of the sender for this message
+
+2) After the servers have accumulated all the server keys, they insert them
+into a list as defined by the server roster order. The servers then sign this
+list with their round signing key. They then distribute this signature among
+each other:
+
+A -> B ([KEY_SIGN | RoundId | KeySignature_A] | [Signature_A])
+- KEY_SIGN - int - the message type
+- RoundId - QByteArray - The round identifier
+- KeySignature_A - A signature against the keys
+- Signature_A - Signature using the round key of the sender for this message
+
+3) After the servers have accumulated all the server signatures, they produce a
+second ordered list consisting of the signatures ordering the list in the same
+order as the server roster. The list is then sent to each servers downstream
+clients:
+
+S -> C ([SERVER_KEYS | RoundId | Keys | KeySignatures] | [Signature_S])
+- SERVER_KEYS - int - the message type
+- RoundId - QByteArray - The round identifier
+- Keys - The set of server keys
+- KeySignatures - The set of signatures against the keys
+- Signature_S - Signature using the round key of the sender for this message
+
+4) After the clients have obtained the keys, they verify their correctness and
+signatures. They then prepare either their data, either an ephemeral public key
+that will be used to produce a pseudonym key or converting their arbitrary data
+into a group element. The clients then onion encrypt this message using the
+last key in the list followed by the next to last all the way to the first key.
+They then transmit this to the first server in the list as their anonymous
+ciphertext message:
+
+C -> S ([MSG_SUBMIT | RoundId | Ciphertext_C] | [Signature_C])
+- MSG_SUBMIT - int - the message type
+- RoundId - QByteArray - The round identifier
+- Ciphertext_C - Clients anonymous ciphertext
+- Signature_C - Signature using the round key of the sender for this message
+
+5) Each server in turn, removes a layer of encryption using their
+EphemeralPublicKey_A, sorts the resulting ciphertext by lexicongraphical order,
+produces a proof of correctness, and broadcasts this to all other servers.  The
+first server includes the initial input by clients. The message follows:
+
+A -> B ([MSG_SHUFFLE | RoundId | Transcript_A] | [Signature_A])
+- MSG_SHUFFLE - int - the message type
+- RoundId - QByteArray - The round identifier
+- Transcript_A - QByteArray - The shuffle output and proof of correctness
+- Signature_A - Signature using the round key of the sender for this message
+
+6) As shuffle results arrive at each server, they verify that the output from a
+previous server and the output from the following server verify using the proof
+of correctness or transcript. This is done starting from the first server to
+the last.  If any validation fails transcript producer has failed to perform
+the protocol correctly. If all pass, then servers sign-off on the resulting
+anonymous cleartext messages, produced as output from the final server
+and distribute among each other these signatures:
+
+A -> B ([MSG_SIGN | RoundId | MsgSignature_A] | [Signature_A])
+- MSG_SHUFFLE - int - the message type
+- RoundId - QByteArray - The round identifier
+- MsgSignature_A - QByteArray - Signature against the final output of the
+shuffle, the anonymous cleartext messages
+- Signature_A - Signature using the round key of the sender for this message
+
+7) After the servers have accumulated all the server signatures, they prepare
+the final message for the clients, a set of all cleartext messages and a
+signature from each server verifying the results:
+
+S -> C ([MSG_OUTPUT | RoundId | Cleartext | MsgSignatures] | [Signature_S])
+- MSG_OUTPUT - int - the message type
+- RoundId - QByteArray - The round identifier
+- Cleartext - QByteArray - The set of anonymous cleartext messages
+- MsgSignatures - QByteArray - Set of server signatures against the cleartext
+messages validating correctness of the shuffle
+- Signature_S - Signature using the round key of the sender for this message
+
+=============
+Known issues
+=============
+- This protocol lacks reconcillation, if a server is faulty, there is no
+built-in means to correct, it will just halt the protocol
+- Clients should transmit their initial ciphertext to all servers, all
+servers should ensure that all clients ciphertext are included in the input
+to the shuffle
 
 ==============================================================================
-Protocol -- Client/Server Bulk:
+B.    Client/Server DC-net
+==============================================================================
+The Client/Server DC-net allows for multiple DC-net message exchanges. In each
+exchange, each client and server contributes a ciphertext message that when
+combined together reveal that exchange's anonymous cleartext messages.  In this
+protocol, clients produce their anonymous ciphertext, transmit it to the
+servers, who perform the distribution and work necessary to ensure correctness,
+before revealing the anonymous cleartext to clients, which concludes a signle
+exchange. The protocol follows.
 
-TODO
+==============
+Base Protocol
+==============
+0) Clients and servers obtain shared secrets by using registration information.
+Optional information introduced during the session bootstrap should include a
+Diffie Hellman public key. Prior to performing any DC-net exchanges, they also
+perform a bootstrapping phase used to establish pseudonym keys and prepare for
+accountability. This takes place as a Neff Shuffle either standalone or as a
+component in the setup for a Verifiable DC-net. In either case, the
+Client/Server DC-net obtains an ordered list of pseudonym verification keys.
+
+1) Clients produce their ciphertext and transmit that to their upstream server
+C -> S ([CLIENT_CIPHERTEXT | RoundId | ExchangeNum | Ciphertext_C] |
+  [Signature_C])
+- CLIENT_CIPHERTEXT - int - the message type
+- RoundId - QByteArray - The round identifier
+- ExchangeNum - int - The index for the current exchange
+- Ciphertext_C - QByteArray - The clients DC-net ciphertext
+- Signature_C - Signature using the round key of the sender for this message
+
+2) Servers wait for client ciphertexts and then after a cut-off accept no
+further ciphertexts. Each server transmits to the other servers the set of
+clients that have transmitted ciphertexts to them:
+A -> B ([SERVER_CLIENT_LIST | RoundId | ExchangeNum | HandledClients_A] |
+  [Signature_A])
+- SERVER_CLIENT_LIST - int - the message type
+- RoundId - QByteArray - The round identifier
+- ExchangeNum - int - The index for the current exchange
+- HandledClients_A - QBitArray - a bit array of all possible clients, a server
+  sets the bit to 1 if he has a ciphertext for that client
+- Signature_A - Signature using the round key of the sender for this message
+
+3) Once a server knows the entire online set of clients, he produces a
+matching ciphertext, XORs the client ciphertexts he has locally along with
+his ciphertext, and commits to this value via a commit message to the other
+servers:
+A -> B ([SERVER_COMMIT | RoundId | ExchangeNum | Commit_A] | [Signature_A])
+- SERVER_COMMIT - int - the message type
+- RoundId - QByteArray - The round identifier
+- ExchangeNum - int - The index for the current exchange
+- Commit_A - QByteArray - A hash of the XORed ciphertext messages
+- Signature_A - Signature using the round key of the sender for this message
+
+4) After receiving the commit message from all other servers, the server
+distributes the XORed message to all other servers:
+A -> B ([SERVER_CIPHERTEXT | RoundId | ExchangeNum | Ciphertext_A] |
+  [Signature_A])
+- SERVER_CIPHERTEXT - int - the message type
+- RoundId - QByteArray - The round identifier
+- ExchangeNum - int - The index for the current exchange
+- Ciphertext_A - QByteArray - The XORed ciphertext messages
+- Signature_A - Signature using the round key of the sender for this message
+
+5) Each server verifies the hash matches the received ciphertext, a mismatch
+equals an equivocation. If all match, the server XORs all ciphertexts to
+produce the anonymous cleartext message, produces a signature against that
+message, and transmit it to all other servers:
+A -> B ([SERVER_VALIDATION | RoundId | ExchangeNum | MsgSignature_A] |
+  [Signature_A])
+- SERVER_VALIDATION - int - the message type
+- RoundId - QByteArray - The round identifier
+- ExchangeNum - int - The index for the current exchange
+- MsgSignature_A - QByteArray - A's signature against the set of anonymous
+  cleartext messages
+- Signature_A - Signature using the round key of the sender for this message
+
+6) After each server has received a signature from all other servers, that
+server will distribute the anonymous cleartext and set of server signatures to
+its downstream clients, concluding a message exchange:
+S -> C ([SERVER_CLEARTEXT | RoundId | ExchangeNum | MsgSignatures | Cleartext] |
+  [Signature_A])
+- SERVER_CLEARTEXT - int - the message type
+- RoundId - QByteArray - The round identifier
+- ExchangeNum - int - The index for the current exchange
+- MsgSignatures - QByteArray - Server signatures against cleartext
+- Cleartext - QByteArray - Anonymous cleartext
+- Signature_S - Signature using the round key of the sender for this message
+
+At this point, all participants have seen the cleartext output for each slot,
+the format ensues. In each slot, there are bits for signaling the need for an
+accusation phase, documented afterward.
+
+======================
+DC-net message format
+======================
+The subformat for the DC-net cleartext messages or slots follows:
+([Accusation_A | ExchangeNum | NextLength_A | Message_A] | [Integrity_A])
+- Accusation_A - byte - I was interrupted in a previous exchange and want to
+  execute a blame round
+- ExchangeNum - int - The index for the current exchange
+- NextLength_A - int - the length of this slot for the next exchange
+- Message_A - byte array - the message to transmit - 0 if Accusation_A is set
+- Integrity_A - byte array - a signature using the pseudonym key produced
+  earlier or a secure hash against the message
+
+On the actual wire, messages take another form to prevent attacks against
+static content. For example, in exchange_i, a malicious entity successfully
+jams a slot without repercussion. If the slot replayed the contents until
+success, he could continuously interrupt without fear of detection. Each slot
+randomizes the contents to eliminate this attack vector:
+[Seed_A | Data_A]
+- Seed_A - QByteArray - a seed into a PRNG used to produce a string that can
+be XORed into the cleartext DC-net message described above
+- Data_A - QByteArray - the resulting XOR between the random string and the
+cleartext DC-net message described above
+
+============
+Blame phase
+============
+0) During a blame phase all participants execute a verifiable anonymous
+communication exchange, a Neff Shuffle or a Verifiable DC-net. During this
+exchange, those who have requested a blame, may transmit an accusation:
+([OwnerIndex | AccuseIndex | ExchangeNum] | [Signature_C])
+- OwnerIndex - int - the index of the slot
+- AccuseIndex - int - bit index into the slot that can be safely deanonymized
+  to reveal the disruptor
+- ExchangeNum - int - The index for the current exchange
+- Signature_C - QByteArray - signature using the slot owner's pseudonym key
+
+1) Servers then transmit blame bits among themselves. Blame bits consist of
+all the client bits and their bit included in their ciphertext.
+([SERVER_BLAME_BITS | RoundId | ExchangeNum | Bits] | [Signature_A])
+
+2) After accumulating all the server blame bits, each server verifies that the
+blame bits matches the ciphertext transmitted by the server earlier, if not,
+they have proof of misbehavior. Otherwise each server processes the bits and
+discovers which client bit does not match the combined ciphertext of the
+servers. That client is now accused by a rebuttal request from each server:
+S -> C ([SERVER_REBUTTAL_OR_VERDICT | RoundId | ExchangeNum | Rebuttal |
+  ExchangeNum_accuse | AccuseIndex | ServerBits] | [Signature_S])
+- SERVER_REBUTTAL_OR_VERDICT - int - the message type
+- RoundId - QByteArray - The round identifier
+- ExchangeNum - int - The index for the current exchange
+- Rebuttal - bool - false notifies that this is a rebuttal request
+- ExchangeNum_accuse - int - the phase in which the incident occurred
+- AccuseIndex - int - bit index into the slot that can be safely deanonymized
+  to reveal the disruptor
+- ServerBits - QBitArray - the shared secrets bit for each server at the
+  AccuseIndex in ExchangeNum_accuse
+- Signature_S - Signature using the round key of the sender for this message
+
+3) After a client has received a Rebuttal request, an honest client processes
+the ServerBits inorder to determine which server lied and attempted to
+incriminate the client. The client then transmits a rebuttal response:
+C -> S ([CLIENT_REBUTTAL | RoundId  | ExchangeNum | ServerIndex | Proof] |
+  [Signature_C])
+- CLIENT_REBUTTAL - int - the message type
+- RoundId - QByteArray - The round identifier
+- ExchangeNum - int - The index for the current exchange
+- ServerIndex - int - the index into the server list of the faulty server
+- Proof - QByteArray - The Diffie Hellman shared secret between the client and
+  faulty server and a proof of knowledge showing that it is correct
+- Signature_C - Signature using the round key of the sender for this message
+
+4) Once each server has seen a rebuttal from the clients, they agree on whether
+the client or server misbehaved and announce, each server transmits a verdict
+signature to all other servers:
+A -> B ([SERVER_VERDICT_SIGNATURE | RoundId | ExchangeNum | Signature_V] |
+  [Signature_A])
+- SERVER_VERDICT_SIGNATURE - int - the message type
+- RoundId - QByteArray - The round identifier
+- ExchangeNum - int - The index for the current exchange
+- Signature_V - QByteArray - Signature of A using his round key against
+- Signature_A - Signature using the round key of the sender for this message
+
+5) Upon accumulating a signature from all servers, the servers push the verdict
+down to their downstream clients:
+S -> C ([SERVER_REBUTTAL_OR_VERDICT | RoundId | ExchangeNum | Verdict |
+  ExchangeNum_accuse | BadIndex | Signatures_verdict] | [Signature_S])
+- SERVER_REBUTTAL_OR_VERDICT - int - the message type
+- RoundId - QByteArray - The round identifier
+- ExchangeNum - int - The index for the current exchange
+- Verdict - bool - true notifies that this is a rebuttal request
+- ExchangeNum_accuse - int - the phase in which the incident occurred
+- BadIndex - int - the index into the complete group roster (servers followed
+  by clients) of the faulty party
+- Signatures_verdict - List of QByteArrays - A signature from each server
+  attesting to the verdict
+- Signature_S - Signature using the round key of the sender for this message
+
+After transmitting or receiving a server verdict, servers and clients,
+respectively terminate the current round.
+
+=============
+Known issues
+=============
+- If a server is faulty, it may not want to sign off on it misbehaving
+- If a client is faulty, it may not respond to a rebuttal request
 
 ==============================================================================
-Protocol -- Verifiable DC-nets:
+C.    Verifiable DC-nets
+==============================================================================
 
 TODO
-
 
 ==============================================================================
 VI.   Technical notes
 ==============================================================================
 
 - Dissent does not directly provide peer-level authentication, that is left to
-  the transport. For anonymous authentication, that means that clients will not
-  be required to authenticate. If peers perform authentication, the identity
-  should be matched against what is provided at the overlay level.
-- Start and Started merely provide for synchronization on messages that may be
-  transmitted by the round.
+  the transport.  If peers perform authentication, the identity should be
+  matched against what is provided at the overlay level.
 - Start may optionally contain group-wide information, if the Anonymity protocol
   requires it. In particular, this might be the Accumulated List of Queued and
   matching signatures from the Listed messages.
@@ -334,41 +619,3 @@ Round - an instance of a protocol execution, where some subset of the entities
 
 Exchange - some rounds support multiple transmissions from participants,
   each transmission and resulting cleartext constitutes an exchange
-
-==============================================================================
-VIII. Message formats
-==============================================================================
-
-A message either is a request, response, or notification. A request and
-notification are RPC. A request expects a response in return.  Dissent stores
-these messages as QVariantLists into QByteArrays using QDataStream. All incoming
-messages also contain a path to the remote sender, so that a receiver can easily
-determine the source of a message.
-
-A request and notification use the following format: [Type, Id, Method, Data]
-The fields are defined as follows:
-- Type - QString - the type of message, 'n' - notification,  'r' - response,
-    'p' - response
-- Id - int - unique identifier for a request, that is included within the response
-    so that it can be routed to the correct requestor
-- Method - QString - the remote procedure
-- Data - QVariant - data for the RPC
-
-A response uses the following format: [Type, Id, Success, Data / Error]
-- Type - QString - the type of message, 'n' - notification,  'r' - response,
-    'p' - response
-- Id - int - unique identifier for a request, that is included within the response
-    so that it can be routed to the correct requestor
-- Method - bool - whether or not the request was successfully handled
-- Data - QVariant - response data for the procedure call
-- Error - int - error code, see ErrorTypes (need doxygen link)
-
-Initiating messages place their name into the Request (or Notification) Method
-field. Responses are implied, therefore their name is not included within the
-Response. The following reprsent the Data portion of a message stored as a
-QVariant.  Messages will be converted into QByteArrays via QDataStream, signed
-if necessary, signed messages will be stored as two QByteArrays stored in
-series via QDataStream. PeerIds are only included for messages that do not
-clearly indicate ownership, single source messages. In messages that contain a
-signature from all servers, the order of signatures is implicitly defined by
-the order in which the servers are listed within the configuration file.
