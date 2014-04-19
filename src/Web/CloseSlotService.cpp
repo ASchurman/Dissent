@@ -7,12 +7,12 @@ namespace Web {
       QHttpResponse *response)
   {
     QSharedPointer<Session> session = GetSession();
-    QVariant data;
+    QVariantHash data;
 
     if(session) {
-      data = session->RequestCloseSlot();
+      data["successful"] = session->RequestCloseSlot() ? 1 : 0;
     } else {
-      data = false;
+      data["successful"] = 0;
     }
 
     SendJsonResponse(response, data);

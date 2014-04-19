@@ -6,12 +6,12 @@ namespace Web {
   void GetSlotStatusService::HandleRequest(QHttpRequest *, QHttpResponse *response)
   {
     QSharedPointer<Session> session = GetSession();
-    QVariant data;
+    QVariantHash data;
 
     if(session) {
-      data = session->GetSlotStatus();
+      data["status"] = session->GetSlotStatus() ? 1 : 0;
     } else {
-      data = false;
+      data["status"] = 0;
     }
 
     SendJsonResponse(response, data);
