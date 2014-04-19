@@ -120,6 +120,12 @@ int main(int argc, char **argv)
     QSharedPointer<BuddiesService> bs(new BuddiesService(nodes[0]->GetSessionManager()));
     ws->AddRoute(QHttpRequest::HTTP_GET, "/session/buddies", bs);
 
+    QSharedPointer<CloseSlotService> close_slot(new CloseSlotService(nodes[0]->GetSessionManager()));
+    ws->AddRoute(QHttpRequest::HTTP_POST, "/session/close", close_slot);
+
+    QSharedPointer<GetSlotStatusService> slot_status(new GetSlotStatusService(nodes[0]->GetSessionManager()));
+    ws->AddRoute(QHttpRequest::HTTP_GET, "/session/slot_status", slot_status);
+
     ws->Start();
   }
   

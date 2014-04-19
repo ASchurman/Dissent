@@ -89,6 +89,12 @@ namespace Sessions {
       virtual bool RequestCloseSlot() { return _current_round->RequestCloseSlot(); }
 
       /**
+       * Gets whether my slot is open for CSBulkRound.
+       * @return True if slot is open. False if slot is closed or not running CSBulkRound
+       */
+      virtual bool GetSlotStatus() { return _current_round->GetSlotStatus(); }
+
+      /**
        * Returns the Session Id
        */
       inline const Id &GetSessionId() const { return _session_id; }

@@ -238,7 +238,9 @@ HEADERS += src/Dissent.hpp \
            src/Web/SendMessageService.hpp \
            src/Web/SessionService.hpp \
            src/Web/WebServer.hpp \
-           src/Web/WebService.hpp 
+           src/Web/WebService.hpp \
+           src/Web/CloseSlotService.hpp \
+           src/Web/GetSlotStatusService.hpp
 
 SOURCES += src/Anonymity/BaseBulkRound.cpp \
            src/Anonymity/BlogDropRound.cpp \
@@ -366,7 +368,9 @@ SOURCES += src/Anonymity/BaseBulkRound.cpp \
            src/Web/GetMessagesService.cpp \
            src/Web/SendMessageService.cpp \
            src/Web/SessionService.cpp \
-           src/Web/WebService.cpp
+           src/Web/WebService.cpp \
+           src/Web/CloseSlotService.cpp \
+           src/Web/GetSlotStatusService.cpp
 
 HEADERS += src/Crypto/CryptoPP/DsaPublicKeyImpl.hpp \
            src/Crypto/CryptoPP/Helper.hpp \

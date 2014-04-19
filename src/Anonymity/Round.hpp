@@ -178,6 +178,12 @@ namespace Anonymity {
        */
       virtual bool RequestCloseSlot() { return false; }
 
+      /**
+       * Gets whether my slot is open. Relevant only for CSBulkRound
+       * @return True if slot is open. False if slot is closed or not CSBulkRound
+       */
+      virtual bool GetSlotStatus() { return false; }
+
     signals:
       /**
        * Emitted when the Round is closed for good or bad.

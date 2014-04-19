@@ -186,6 +186,8 @@
 #include "Web/MessageWebService.hpp"
 #include "Web/SendMessageService.hpp"
 #include "Web/SessionService.hpp"
+#include "Web/CloseSlotService.hpp"
+#include "Web/GetSlotStatusService.hpp"
 #include "Web/WebServer.hpp"
 #include "Web/WebService.hpp"
 
