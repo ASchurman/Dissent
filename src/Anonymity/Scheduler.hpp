@@ -11,8 +11,9 @@ namespace Anonymity {
   /**
    * Abstract base class for all scheduling schemes used in CSBulkRound
    */
-  class Scheduler
+  class Scheduler : public QObject
   {
+    Q_OBJECT
   public:
       typedef Identity::PrivateIdentity PrivateIdentity;
 
@@ -120,6 +121,10 @@ namespace Anonymity {
        * closed.
        */
       QMap<int, int> messages;
+
+  signals:
+      // Emitted when the slot is opened or closed
+      void SlotChanged(bool status);
 
   protected:
       inline const PrivateIdentity &GetPrivateIdentity() const { return _ident; }

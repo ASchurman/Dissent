@@ -18,6 +18,7 @@ namespace Anonymity {
    */
   class QueueScheduler : public Scheduler
   {
+    Q_OBJECT
   public:
     QueueScheduler(const PrivateIdentity &ident, int time_limit) :
       Scheduler(ident),

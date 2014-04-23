@@ -31,7 +31,8 @@ namespace Sessions {
     _registered(new ResponseHandler(this, "Registered")),
     _prepare_waiting(false),
     _registering(false),
-    _auth(auth)
+    _auth(auth),
+    _slot_open(false)
   {
     qRegisterMetaType<QSharedPointer<Round> >("QSharedPointer<Round>");
 
@@ -292,6 +293,8 @@ namespace Sessions {
     _current_round->SetSink(this);
     QObject::connect(_current_round.data(), SIGNAL(Finished()), this,
         SLOT(HandleRoundFinishedSlot()));
+    QObject::connect(_current_round.data(), SIGNAL(SlotChanged(bool)), this,
+        SLOT(SlotChanged(bool)));
   }
 
   bool Session::CheckGroup(const Group &group)

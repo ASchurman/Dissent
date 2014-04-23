@@ -10,11 +10,13 @@ namespace Anonymity {
     // All requests are granted instantly in this scheduler
     read = false;
     slot_open = true;
+    emit SlotChanged(slot_open);
   }
 
   void AllSpeakScheduler::RequestingCloseSlot()
   {
     slot_open = false;
+    emit SlotChanged(slot_open);
   }
 
   void AllSpeakScheduler::RequestedOpenSlot(int idx, int len)

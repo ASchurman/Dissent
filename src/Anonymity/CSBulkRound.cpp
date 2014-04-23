@@ -271,6 +271,9 @@ namespace Anonymity {
       qDebug() << "Invalid scheduler type in settings. Initializing CSBulkRound with AllSpeakScheduler";
       _state->scheduler = QSharedPointer<Scheduler>(new AllSpeakScheduler(GetPrivateIdentity()));
     }
+
+    // Emit my slot changed signal when the scheduler's slot changed signal is emitted
+    connect(_state->scheduler.data(), SIGNAL(SlotChanged(bool)), this, SIGNAL(SlotChanged(bool)));
   }
 
   CSBulkRound::~CSBulkRound()

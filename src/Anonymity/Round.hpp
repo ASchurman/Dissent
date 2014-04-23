@@ -190,6 +190,11 @@ namespace Anonymity {
        */
       void Finished();
 
+      /**
+       * Emitted when my slot is opened or closed.
+       */
+      void SlotChanged(bool status);
+
     protected:
       /**
        * Called on Round Start

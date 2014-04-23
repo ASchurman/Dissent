@@ -92,7 +92,7 @@ namespace Sessions {
        * Gets whether my slot is open for CSBulkRound.
        * @return True if slot is open. False if slot is closed or not running CSBulkRound
        */
-      virtual bool GetSlotStatus() { return _current_round->GetSlotStatus(); }
+      virtual bool GetSlotStatus() { return _slot_open; }
 
       /**
        * Returns the Session Id
@@ -236,6 +236,8 @@ namespace Sessions {
        */
       void SendChallenge(bool request, const QVariant &data);
 
+      inline void OnSlotChanged(bool status) { _slot_open = status; }
+
     private:
       /**
        * A light weight class for handling semi-reliable sends
@@ -326,6 +328,7 @@ namespace Sessions {
       int _trim_send_queue;
       bool _registering;
       QSharedPointer<Identity::Authentication::IAuthenticate> _auth;
+      bool _slot_open;
 
     private slots:
       /**

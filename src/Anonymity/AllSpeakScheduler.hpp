@@ -12,6 +12,7 @@ namespace Anonymity {
    */
   class AllSpeakScheduler : public Scheduler
   {
+    Q_OBJECT
   public:
       AllSpeakScheduler(const PrivateIdentity &ident) :
         Scheduler(ident)
