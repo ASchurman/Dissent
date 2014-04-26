@@ -109,8 +109,8 @@ namespace Applications {
 
       if(cmd == "send") {
         session->Send(msg.toUtf8());
-      } else if(!session->RequestCloseSlot()) {
-        _qtout << endl << "Cannot request to close the node's slot." << endl;
+      } else {
+        session->RequestCloseSlot();
       }
     } else if(cmd == "") {
     } else {

@@ -173,12 +173,6 @@ namespace Anonymity {
       inline QSharedPointer<BuddyMonitor> GetBuddyMonitor() { return _bm; }
 
       /**
-       * Request to close my slot
-       * @return True if successful. Will return false for most types of rounds
-       */
-      virtual bool RequestCloseSlot() { return false; }
-
-      /**
        * Gets whether my slot is open. Relevant only for CSBulkRound
        * @return True if slot is open. False if slot is closed or not CSBulkRound
        */
@@ -194,6 +188,12 @@ namespace Anonymity {
        * Emitted when my slot is opened or closed.
        */
       void SlotChanged(bool status);
+
+    public slots:
+      /**
+       * Request to close my slot. No-op for all types of rounds except CSBulk
+       */
+      virtual void RequestCloseSlot() { }
 
     protected:
       /**

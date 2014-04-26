@@ -64,7 +64,7 @@ namespace Anonymity {
         qDebug() << "My slot is being opened";
         slot_open = true;
         read = false;
-        emit SlotChanged(slot_open);
+        emit SlotStatusChanged(slot_open);
       }
     }
 
@@ -78,7 +78,7 @@ namespace Anonymity {
     if (speaker == my_idx) {
       slot_open = false;
       read = false;
-      emit SlotChanged(slot_open);
+      emit SlotStatusChanged(slot_open);
     }
     speaker = -1;
   }

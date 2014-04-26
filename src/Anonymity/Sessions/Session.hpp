@@ -84,9 +84,8 @@ namespace Sessions {
 
       /**
        * From a client software. Request to close my slot.
-       * @return True if successful
        */
-      virtual bool RequestCloseSlot() { return _current_round->RequestCloseSlot(); }
+      virtual void RequestCloseSlot() { emit CloseSlot(); }
 
       /**
        * Gets whether my slot is open for CSBulkRound.
@@ -163,6 +162,8 @@ namespace Sessions {
        */
       void Stopping();
 
+      void CloseSlot();
+
     public slots:
       /**
        * Calls start
@@ -236,7 +237,7 @@ namespace Sessions {
        */
       void SendChallenge(bool request, const QVariant &data);
 
-      inline void OnSlotChanged(bool status) { _slot_open = status; }
+      void OnSlotChanged(bool status);
 
     private:
       /**

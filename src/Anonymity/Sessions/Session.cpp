@@ -294,7 +294,9 @@ namespace Sessions {
     QObject::connect(_current_round.data(), SIGNAL(Finished()), this,
         SLOT(HandleRoundFinishedSlot()));
     QObject::connect(_current_round.data(), SIGNAL(SlotChanged(bool)), this,
-        SLOT(SlotChanged(bool)));
+        SLOT(OnSlotChanged(bool)));
+    QObject::connect(this, SIGNAL(CloseSlot()), _current_round.data(),
+        SLOT(RequestCloseSlot()));
   }
 
   bool Session::CheckGroup(const Group &group)
@@ -533,6 +535,17 @@ namespace Sessions {
 
     bool more = m_queue.count() != m_trim;
     return QPair<QByteArray, bool>(data, more);
+  }
+
+  void Session::OnSlotChanged(bool status)
+  {
+    _slot_open = status;
+
+    if (_slot_open) {
+      qDebug() << "Session: slot is now open";
+    } else {
+      qDebug() << "Session: slot is now closed";
+    }
   }
 }
 }

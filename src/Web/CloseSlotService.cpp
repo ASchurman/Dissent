@@ -10,7 +10,8 @@ namespace Web {
     QVariantHash data;
 
     if(session) {
-      data["successful"] = session->RequestCloseSlot() ? 1 : 0;
+      session->RequestCloseSlot();
+      data["successful"] = 1;
     } else {
       data["successful"] = 0;
     }

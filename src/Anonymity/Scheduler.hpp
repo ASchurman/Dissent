@@ -124,7 +124,7 @@ namespace Anonymity {
 
   signals:
       // Emitted when the slot is opened or closed
-      void SlotChanged(bool status);
+      void SlotStatusChanged(bool status);
 
   protected:
       inline const PrivateIdentity &GetPrivateIdentity() const { return _ident; }

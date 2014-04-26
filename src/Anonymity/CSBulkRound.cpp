@@ -273,7 +273,7 @@ namespace Anonymity {
     }
 
     // Emit my slot changed signal when the scheduler's slot changed signal is emitted
-    connect(_state->scheduler.data(), SIGNAL(SlotChanged(bool)), this, SIGNAL(SlotChanged(bool)));
+    connect(_state->scheduler.data(), SIGNAL(SlotStatusChanged(bool)), this, SIGNAL(SlotChanged(bool)));
   }
 
   CSBulkRound::~CSBulkRound()
@@ -1749,10 +1749,15 @@ namespace Anonymity {
     return QPair<int, QByteArray>(bidx, proof);
   }
 
-  bool CSBulkRound::RequestCloseSlot()
+  void CSBulkRound::RequestCloseSlot()
   {
     _state->close_slot = _state->scheduler->CanCloseSlot();
-    return _state->close_slot;
+
+    if (_state->close_slot) {
+      qDebug() << "User requested to close my slot: " << _state->scheduler->my_idx;
+    } else {
+      qDebug() << "User requested to close my slot, but I cannot close it. " << _state->scheduler->my_idx;
+    }
   }
 }
 }

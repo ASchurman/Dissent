@@ -207,9 +207,10 @@ namespace Anonymity {
 #endif
       }
 
-      virtual bool RequestCloseSlot();
-
       virtual bool GetSlotStatus() { return _state->scheduler->SlotOpen(); }
+
+    public slots:
+      virtual void RequestCloseSlot();
 
     protected:
       typedef Utils::Random Random;
